@@ -2,11 +2,12 @@
 #define _HACC_TEMPLATE_USER_CODE_
 
 #include <boost/property_tree/json_parser.hpp>
-#include "app_base_swm_user_code.h"
+//#include "app_base_swm_user_code.h"
 
-#include "defines.h"
-#include "resolve_string_environment_variables.h"
+//#include "defines.h"
+//#include "resolve_string_environment_variables.h"
 
+#include "swm-include.h"
 
 #include "hacc_config.h"
 #include "hacc_compute_rcbtree.h"
@@ -14,16 +15,18 @@
 #include "hacc_fft_backward_solve_gradient.h"
 #include "hacc_exchange.h"
 #include "hacc_timestep.h"
+#include "swm-include.h"
+
 
 class HaccTimestep;
 
-class HACCSWMUserCode : public SWMUserCode {
+class HACCSWMUserCode 
+{
 
 
     public:
 
         HACCSWMUserCode(
-                SWMUserIF* user_if,
                 boost::property_tree::ptree cfg,
                 void**& generic_ptrs
                 );
@@ -37,17 +40,16 @@ class HACCSWMUserCode : public SWMUserCode {
 
     protected:
 
-        SWMUserIF* user_if;
 
-        uint32_t request_vc;
-        uint32_t response_vc;
+        SWM_VC request_vc;
+        SWM_VC response_vc;
         uint32_t pkt_rsp_bytes;
+        uint32_t  process_id;
+        uint32_t  process_cnt;
 
         std::string gen_cfg_filename;
         boost::property_tree::ptree cfg;
         boost::property_tree::ptree gen_cfg;
-
-        bool done_to_child;
 
         int ng;
         int nranks; //8;

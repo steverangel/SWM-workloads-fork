@@ -7,16 +7,14 @@
 #include "hacc_exchange.h"
 #include "hacc_compute_rcbtree.h"
 
-#include "swm_user_code.h"
+//#include "swm_user_code.h"
 
 class HaccComputeRCBTree;
 
-class HaccTimestep : public SWMUserCode {
+class HaccTimestep 
+{
 
     public:
-
-        bool* done_to_parent;
-        bool done_to_child;
 
         HaccConfig & config;
         HaccComputeRCBTree * rcb;
@@ -25,9 +23,6 @@ class HaccTimestep : public SWMUserCode {
         HaccExchange * exchange;
 
         HaccTimestep (
-                SWMUserIF* user_if,
-
-                bool* done_from_parent,
 
                 HaccConfig & config,
 
@@ -49,6 +44,7 @@ class HaccTimestep : public SWMUserCode {
                 HaccExchange & exchange
                 */
                 );
+         //HaccTimestep () { do_steps();};
 
         ~HaccTimestep() {
             //std::cout << "~HaccTimestep()" << std::endl;
@@ -60,13 +56,13 @@ class HaccTimestep : public SWMUserCode {
 
         void map2_poisson_backward_gradient();
 
-        void call();
+        void do_steps();
 
     private:
     
         // Some timestep-related parameters fixed by the CORAL testcase
-        const int nstep = 3;
-        const int nsub  = 5;
+        const int nstep = 1;//3;
+        const int nsub  = 0;//5;
         const bool do_drop_memory = true;
         const bool enable_hacc_fft;
         const bool enable_hacc_exchange;

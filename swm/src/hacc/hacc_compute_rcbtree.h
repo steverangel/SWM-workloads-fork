@@ -8,20 +8,16 @@
 
 #include "hacc_config.h"
 
-#include "swm_user_code.h"
-#include "swm.h"
-#include "swm_process_app_if.h"
-#include "app_base_swm_user_code.h"
+//#include "swm_user_code.h"
+//#include "swm.h"
+//#include "swm_process_app_if.h"
+//#include "app_base_swm_user_code.h"
 
-class HaccComputeRCBTree : public SWMUserCode {
+class HaccComputeRCBTree {
 
     public:
 
         HaccComputeRCBTree(
-
-                SWMUserIF* user_if,
-
-                bool* done_from_parent,
 
                 HaccConfig & config,
                 double nint_mean,
@@ -29,11 +25,9 @@ class HaccComputeRCBTree : public SWMUserCode {
                 double nint_per_wall_second
                 );
 
-    void call();
+    void build_tree_and_evaluate_forces();
 
     protected:
-
-        bool* done_to_parent;
 
         HaccConfig & config;
 

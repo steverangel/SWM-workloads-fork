@@ -3,11 +3,9 @@
 #include <stdint.h>
 
 #include "hacc_timestep.h"
+#include "swm-include.h"
 
 HaccTimestep::HaccTimestep (
-        SWMUserIF* user_if,
-
-        bool* done_from_parent,
 
         HaccConfig & config,
 
@@ -29,8 +27,6 @@ HaccTimestep::HaccTimestep (
         HaccExchange & exchange
         */
         ) :
-    SWMUserCode(user_if),
-    done_to_parent(done_from_parent),
     config(config),
     enable_hacc_fft(enable_hacc_fft),
     enable_hacc_exchange(enable_hacc_exchange),
@@ -39,8 +35,6 @@ HaccTimestep::HaccTimestep (
 
     // Compute models
     rcb = new HaccComputeRCBTree (
-            user_if,
-            &done_to_child,
             config,
             ninteractions_per_rank_mean,
             ninteractions_per_rank_delta,
@@ -48,24 +42,18 @@ HaccTimestep::HaccTimestep (
             );
 
     fft_forward_solve = new HaccFFTForwardSolve (
-            user_if,
-            &done_to_child,
             config,
             buffer_copy_MBps,
             fft_work_per_second
             );
 
     fft_backward_solve_gradient = new HaccFFTBackwardSolveGradient (
-            user_if,
-            &done_to_child,
             config,
             buffer_copy_MBps,
             fft_work_per_second
             );
 
     exchange = new HaccExchange (
-            user_if,
-            &done_to_child,
             config,
             buffer_copy_MBps
             );
@@ -84,14 +72,7 @@ HaccTimestep::HaccTimestep (
 
 void
 HaccTimestep::sub_cycle() {
-    if (enable_contexts)
-    while(1) {
-        (*rcb)(); //rcb.build_tree_and_evaluate_forces();
-        if(done_to_child) break;
-        else yield();
-    }
-    else
-        (*rcb)(); //rcb.build_tree_and_evaluate_forces();
+	rcb->build_tree_and_evaluate_forces();
 }
 
 void
@@ -99,52 +80,29 @@ HaccTimestep::map2_poisson_forward() {
     // TODO:compute: forward CIC
     if (enable_hacc_fft)
     {
-        if (enable_contexts)
-        while(1) {
-            (*fft_forward_solve)(); //fft.forward_solve();
-            if(done_to_child) break;
-            else yield();
-        }
-        else
-            (*fft_forward_solve)(); //fft.forward_solve();
+      fft_forward_solve->forward_solve();
     }
 }
 
 void
 HaccTimestep::map2_poisson_backward_gradient() {
     for (int idim=0; idim<3; idim++) {
-        if (enable_hacc_fft)
-        {
-            if (enable_contexts)
-            while(1) {
-                (*fft_backward_solve_gradient)(); //fft.backward_solve_gradient(idim);
-                if(done_to_child) break;
-                else yield();
-            }
-            else
-                (*fft_backward_solve_gradient)(); //fft.backward_solve_gradient(idim);
-        }
+      if (enable_hacc_fft)
+      {
+        fft_backward_solve_gradient->backward_solve_gradient(idim);
+      }
 
-        if (enable_hacc_exchange)
-        {
-            // TODO:compute: FFT copy array backwards
-            if (enable_contexts)
-            while(1) {
-                (*exchange)();
-                if(done_to_child) break;
-                else yield();
-            }
-            else
-                (*exchange)();
-            // TODO:compute: inverse CIC
-        }
+      if (enable_hacc_exchange)
+      {
+          // TODO:compute: FFT copy array backwards
+          //    (*exchange)();
+      }
     }
 }
 
 
 void
-HaccTimestep::call() { //do_steps() {
-    *done_to_parent = false;
+HaccTimestep::do_steps() {
 
 #if 0
     //use this just to test nested contexts...
@@ -154,15 +112,14 @@ HaccTimestep::call() { //do_steps() {
     }
 #endif
 
-//#if 0
     for (int istep=0; istep<nstep; istep++) {
-
         // Half-kick at first step
         if (istep == 0) {
             map2_poisson_forward();
             map2_poisson_backward_gradient();
         }
 
+/*
         // Sub-stepping
         for (int isubstep=0;isubstep<nsub; isubstep++) {
             sub_cycle();
@@ -175,17 +132,29 @@ HaccTimestep::call() { //do_steps() {
             // contains an implicit synchronization and acts as a barrier,
             // so it's important to emulate its effect
             //backend.comm_emulate_cart_create();
-            SWM_Barrier(
-                    SWM_COMM_WORLD,  //comm_id
-                    config.request_vc,  //reqvc
-                    config.response_vc  //rspvc
-                    );
+            //SWM_Barrier(
+            //        SWM_COMM_WORLD,  //comm_id
+            //        config.request_vc,  //reqvc
+            //        config.response_vc  //rspvc
+            //        );
+            //
+	    SWM_Barrier(
+            SWM_COMM_WORLD,
+            config.request_vc,
+            config.response_vc,
+            NO_BUFFER,
+            AUTO,
+            NULL,
+            AUTOMATIC,
+            AUTOMATIC
+        );
+
         }
 
         // Checksum particles
         //backend.comm_allreduce(8); // reduce a single MPI_LONG_LONG
         if (enable_hacc_checksum)
-        SWM_Allreduce(
+          SWM_Allreduce(
                 8,  //msg_size
                 config.pkt_rsp_bytes, // pkt_rsp_bytes
                 SWM_COMM_WORLD,  //comm_id
@@ -193,22 +162,22 @@ HaccTimestep::call() { //do_steps() {
                 config.response_vc,  //rspvc
                 NO_BUFFER,  //sendbuf
                 NO_BUFFER   //recvbuf
-                );
+              );
         
         // Get rho into spectral domain
         map2_poisson_forward();
-
+        
         // Checksum grid density
         //backend.comm_allreduce(8); // reduce a single MPI_DOUBLE
         if (enable_hacc_checksum)
-         SWM_Allreduce(
-                8,  //msg_size
+          SWM_Allreduce(
+                8,                    // msg_size
                 config.pkt_rsp_bytes, // pkt_rsp_bytes
-                SWM_COMM_WORLD,  //comm_id
-                config.request_vc,  //reqvc
-                config.response_vc,  //rspvc
-                NO_BUFFER,  //sendbuf
-                NO_BUFFER   //recvbuf
+                SWM_COMM_WORLD,       // comm_id
+                config.request_vc,    // reqvc
+                config.response_vc,   // rspvc
+                NO_BUFFER,            // sendbuf
+                NO_BUFFER             // recvbuf
                 );
        
         // P(k) computation may occur here, and does a couple of Allreduce
@@ -224,24 +193,35 @@ HaccTimestep::call() { //do_steps() {
 
         if (enable_hacc_checksum)
         {
-            for(int ar=0; ar<3; ar++) {
-                SWM_Allreduce(
-                        8,  //msg_size
-                        config.pkt_rsp_bytes, // pkt_rsp_bytes
-                        SWM_COMM_WORLD,  //comm_id
-                        config.request_vc,  //reqvc
-                        config.response_vc,  //rspvc
-                        NO_BUFFER,  //sendbuf
-                        NO_BUFFER   //recvbuf
-                        );
-            }
-            SWM_Barrier(
-                    SWM_COMM_WORLD,  //comm_id
-                    config.request_vc,  //reqvc
-                    config.response_vc  //rspvc
+          for(int ar=0; ar<3; ar++) {
+              SWM_Allreduce(
+                      8,  //msg_size
+                      config.pkt_rsp_bytes, // pkt_rsp_bytes
+                      SWM_COMM_WORLD,  //comm_id
+                      config.request_vc,  //reqvc
+                      config.response_vc,  //rspvc
+                      NO_BUFFER,  //sendbuf
+                      NO_BUFFER   //recvbuf
                     );
+          }
+          //SWM_Barrier(
+          //        SWM_COMM_WORLD,  //comm_id
+          //        config.request_vc,  //reqvc
+          //        config.response_vc  //rspvc
+          //        );
+          SWM_Barrier(
+                SWM_COMM_WORLD,
+                config.request_vc,
+                config.response_vc,
+                NO_BUFFER,
+                AUTO,
+                NULL,
+                AUTOMATIC,
+                AUTOMATIC
+            );
+
         }
+*/
     }
 
-    *done_to_parent = true; yield();
 }

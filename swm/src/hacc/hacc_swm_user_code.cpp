@@ -1,29 +1,61 @@
 
 #include "hacc_swm_user_code.h"
 
+static std::string expand_environment_variables( std::string s )
+{
+    if ( s.find( "${" ) == std::string::npos )
+    {
+        return s;
+    }
+ 
+    std::string pre  = s.substr( 0, s.find( "${" ) );
+    std::string post = s.substr( s.find( "${" ) + 2 );
+ 
+    if ( post.find( '}' ) == std::string::npos )
+    {
+        return s;
+    }
+ 
+    std::string variable = post.substr( 0, post.find( '}' ) );
+    std::string value    = "";
+ 
+    post = post.substr( post.find( '}' ) + 1 );
+ 
+    if ( getenv( variable.c_str() ) != NULL )
+    {
+        value = std::string( getenv( variable.c_str() ) );
+    }
+ 
+    return expand_environment_variables( pre + value + post );
+}
+
 HACCSWMUserCode::HACCSWMUserCode(
-        SWMUserIF* user_if,
         boost::property_tree::ptree cfg,
         void**& generic_ptrs
         ) :
-    SWMUserCode(user_if),
-    user_if(user_if),
-    request_vc(cfg.get<uint32_t>("request_vc", 0)), 
-    response_vc(cfg.get<uint32_t>("response_vc", 4)),
-    pkt_rsp_bytes(cfg.get<uint32_t>("pkt_rsp_bytes", 0)),
-    gen_cfg_filename(cfg.get<std::string>("gen_cfg_filename")),
+    process_cnt(cfg.get<uint32_t>("jobs.size", 1)),
+    request_vc(cfg.get<SWM_VC>("jobs.cfg.request_vc", 0)), 
+    response_vc(cfg.get<SWM_VC>("jobs.cfg.response_vc", 4)),
+    pkt_rsp_bytes(cfg.get<uint32_t>("jobs.cfg.pkt_rsp_bytes", 0)),
+    gen_cfg_filename(cfg.get<std::string>("jobs.cfg.gen_cfg_filename")),
     cfg(cfg)
 {
-    //cerr << "Got filename: " << gen_cfg_filename << endl;
+    process_id = *((int*)generic_ptrs[0]);
+
+    //for (int i=0; i<process_cnt; ++i) {
+    //  if (process_id==i)
+    //    std::cout << "Hello from rank:" << process_id << std::endl;
+    //}
+    //std::cerr << "Got filename: " << gen_cfg_filename << std::endl;
 
     //here we should parse the json pointed to by gen_cfg_filename and do whatever with it...
     std::ifstream gen_cfg_file;
 
     // in case there are environment paths in the variable...
-    gen_cfg_filename = expand_environment_variables(gen_cfg_filename);
+    //gen_cfg_filename = expand_environment_variables(gen_cfg_filename);
 
     gen_cfg_file.open(gen_cfg_filename);
-    ASSERT(gen_cfg_file.is_open(), "Could not open gen_cfg_file: " << gen_cfg_filename << std::endl);
+    //ASSERT(gen_cfg_file.is_open(), "Could not open gen_cfg_file: " << gen_cfg_filename << std::endl);
 
     //boost::property_tree::ptree gen_cfg;
     std::stringstream ss;
@@ -31,6 +63,7 @@ HACCSWMUserCode::HACCSWMUserCode(
 
     while(getline(gen_cfg_file, line)) {
         ss << line;
+        //std::cout << line << std::endl;
     }
 
     boost::property_tree::read_json(ss, gen_cfg);
@@ -38,45 +71,46 @@ HACCSWMUserCode::HACCSWMUserCode(
     ng = gen_cfg.get<int>("ng");
     nranks = gen_cfg.get<int>("nranks"); //8;
 
+    assert(process_cnt==nranks);  // these should match!
+
     assert(sscanf(gen_cfg.get<std::string>("rank_shape_3d").c_str(), "(%d, %d, %d)", &(rank_shape_3d[0]), &(rank_shape_3d[1]), &(rank_shape_3d[2])) == 3);
     assert(sscanf(gen_cfg.get<std::string>("rank_shape_2d_x").c_str(), "(%d, %d, %d)", &(rank_shape_2d_x[0]), &(rank_shape_2d_x[1]), &(rank_shape_2d_x[2])) == 3);
     assert(sscanf(gen_cfg.get<std::string>("rank_shape_2d_y").c_str(), "(%d, %d, %d)", &(rank_shape_2d_y[0]), &(rank_shape_2d_y[1]), &(rank_shape_2d_y[2])) == 3);
     assert(sscanf(gen_cfg.get<std::string>("rank_shape_2d_z").c_str(), "(%d, %d, %d)", &(rank_shape_2d_z[0]), &(rank_shape_2d_z[1]), &(rank_shape_2d_z[2])) == 3);
 
-    box_length = gen_cfg.get<double>("box_length"); //96.1458;
+    box_length = gen_cfg.get<double>("box_length"); 
 
-    /*
-    printf("ng: %d\n", ng);
-    printf("nranks: %d\n", nranks);
-    printf("box_length: %g\n", box_length);
+    if (process_id==0) {
+      printf("ng: %d\n", ng);
+      printf("nranks: %d\n", nranks);
+      printf("box_length: %g\n", box_length);
 
-    for(int i=0; i<3; i++) printf("rank_shape_3d[%d]: %d\n", i, rank_shape_3d[i]);
-    for(int i=0; i<3; i++) printf("rank_shape_2d_x[%d]: %d\n", i, rank_shape_2d_x[i]);
-    for(int i=0; i<3; i++) printf("rank_shape_2d_y[%d]: %d\n", i, rank_shape_2d_y[i]);
-    for(int i=0; i<3; i++) printf("rank_shape_2d_z[%d]: %d\n", i, rank_shape_2d_z[i]);
-    */
+      for(int i=0; i<3; i++) printf("rank_shape_3d[%d]: %d\n", i, rank_shape_3d[i]);
+      for(int i=0; i<3; i++) printf("rank_shape_2d_x[%d]: %d\n", i, rank_shape_2d_x[i]);
+      for(int i=0; i<3; i++) printf("rank_shape_2d_y[%d]: %d\n", i, rank_shape_2d_y[i]);
+      for(int i=0; i<3; i++) printf("rank_shape_2d_z[%d]: %d\n", i, rank_shape_2d_z[i]);
+    }
     
     gen_cfg_file.close();
+
 }
 
 void
 HACCSWMUserCode::call() {
 
-    /*
-    const int ng = 8;
-    const int nranks = 8;
-    const double box_length = 96.1458;
-    const int rank_shape_3d  [3] = {2, 2, 2};
-    const int rank_shape_2d_x[3] = {1, 4, 2};
-    const int rank_shape_2d_y[3] = {4, 1, 2};
-    const int rank_shape_2d_z[3] = {4, 2, 1};
-    */
+    //SWM_Init(); <<-- symbol undefined 
+    // NOTE: I think you can only start using SWM_*** functions from here in the call stack.
 
-    //double box_length = 19613.75;
-
+    //SWM_Barrier(
+    //    SWM_COMM_WORLD,
+    //    request_vc,
+    //    response_vc,
+    //    NO_BUFFER,
+    //    AUTO,
+    //    NULL
+    //);
 
     // Perf model parameters
-    
     const double ninteractions_per_rank_mean  = 1e10;
     const double ninteractions_per_rank_delta = 0.01;
     const double ninteractions_per_rank_per_wallsecond = 1e9;
@@ -105,8 +139,6 @@ HACCSWMUserCode::call() {
 
     // Assemble timestep model
     timestep = new HaccTimestep (
-            user_if,
-            &done_to_child,
             config,
 
             ninteractions_per_rank_mean,
@@ -124,21 +156,11 @@ HACCSWMUserCode::call() {
     // ====================================================================
     // Code below will go to call() method of SWMUserCode subclass
     // ====================================================================
-
     // Go!
-    if (enable_contexts)
-        while(1) {
-            (*timestep)(); //timestep.do_steps();
-            if(done_to_child) break;
-            else yield();
-        }
 
-    else
-        (*timestep)(); //timestep.do_steps();
+    timestep->do_steps();
 
     SWM_Finalize();
-//    assert(0);
-    
 }
 
-DLL_POSTAMBLE(HACCSWMUserCode)
+//DLL_POSTAMBLE(HACCSWMUserCode)

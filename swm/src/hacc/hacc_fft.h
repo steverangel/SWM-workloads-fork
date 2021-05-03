@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "app_base_swm_user_code.h"
+//#include "app_base_swm_user_code.h"
 
 #include "hacc_config.h"
 #include "hacc_ndindex.h"
@@ -19,15 +19,13 @@ typedef enum {
     DISTRIBUTION_2_TO_3
 } direction_t;
 
-class HaccFFT : public SWMUserCode {
+class HaccFFT 
+//: public SWMUserCode 
+{
 
     public:
 
         HaccFFT(
-                SWMUserIF* user_if,
-
-                bool* done_from_parent,
-
                 HaccConfig & config,
                 double buffer_copy_MBps,
                 double fft_work_per_second
@@ -71,9 +69,6 @@ class HaccFFT : public SWMUserCode {
 
     protected:
        
-        bool* done_to_parent;
-        bool done_to_child;
-
         HaccConfig & config;
         double buffer_copy_MBps;
         double fft_work_per_second;

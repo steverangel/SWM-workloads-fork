@@ -1,21 +1,3 @@
-/*
- * =====================================================================================
- *
- *       Filename:  hacc_fft_backward_solve_gradient.h
- *
- *    Description:  
- *
- *        Version:  1.0
- *        Created:  08/06/2013 12:53:36 PM
- *       Revision:  none
- *       Compiler:  gcc
- *
- *         Author:  John Thompson (FPD), john.d.thompson@intel.com
- *        Company:  Intel
- *
- * =====================================================================================
- */
-
 #ifndef _HACC_FFT_BACKWARD_SOLVE_GRADIENT_H_
 #define _HACC_FFT_BACKWARD_SOLVE_GRADIENT_H_
 
@@ -28,9 +10,6 @@ class HaccFFTBackwardSolveGradient : public HaccFFT {
     public:
 
         HaccFFTBackwardSolveGradient(
-                    SWMUserIF* user_if,
-
-                    bool* done_from_parent,
 
                     HaccConfig & config,
                     double buffer_copy_MBps,
@@ -38,7 +17,7 @@ class HaccFFTBackwardSolveGradient : public HaccFFT {
                     );
 
         //BOZO w/ axis
-        void call();
+        void backward_solve_gradient(int);
 
 };
 

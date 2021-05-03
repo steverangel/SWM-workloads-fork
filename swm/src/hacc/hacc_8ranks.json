@@ -1,0 +1,1 @@
+{"rank_shape_2d_z": "(4, 2, 1)", "rank_shape_2d_y": "(4, 1, 2)", "rank_shape_2d_x": "(1, 4, 2)", "nranks": "8", "ng": "128", "rank_shape_3d": "(2, 2, 2)", "box_length": "64.0", "nthreads_per_rank": "1", "config": "8ranks"}

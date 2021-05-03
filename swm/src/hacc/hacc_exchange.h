@@ -5,18 +5,17 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include "app_base_swm_user_code.h"
+//#include "app_base_swm_user_code.h"
 
 #include "hacc_config.h"
 #include "hacc_ndindex.h"
 
 class SWMProcessUserIF;
 
-class HaccExchange : public SWMUserCode {
+class HaccExchange  
+{
 
     protected:
-
-    bool* done_to_parent;
 
     HaccConfig & config;
     double buffer_copy_MBps;
@@ -35,9 +34,6 @@ class HaccExchange : public SWMUserCode {
     public:
 
         HaccExchange(
-                SWMUserIF* user_if,
-
-                bool* done_from_parent,
 
                 HaccConfig & config,
                 double buffer_copy_MBps

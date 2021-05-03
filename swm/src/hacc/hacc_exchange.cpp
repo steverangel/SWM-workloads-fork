@@ -1,16 +1,13 @@
 
 #include "hacc_exchange.h"
+#include  "swm-include.h"
+#define INT_MAX 2>>31
 
 HaccExchange::HaccExchange(
-        SWMUserIF* user_if,
-
-        bool* done_from_parent,
 
         HaccConfig & config,
         double buffer_copy_MBps
         ) :
-    SWMUserCode(user_if),
-    done_to_parent(done_from_parent),
     config(config),
     buffer_copy_MBps(buffer_copy_MBps),
     index3d()
@@ -134,22 +131,8 @@ HaccExchange::exchange(int inbor_send_to, int inbor_recv_from) {
 
 void
 HaccExchange::call() { //exchange_grid() {
-    if(enable_contexts)
-    while(1) {
-        *done_to_parent = false;
         for (int inbor=0; inbor<NUM_OF_NEIGHBORS; inbor+=2) {
             exchange(inbor, inbor+1);
             exchange(inbor+1, inbor);
         }
-        *done_to_parent = true; yield();
-    }
-    else
-    {
-        *done_to_parent = false;
-        for (int inbor=0; inbor<NUM_OF_NEIGHBORS; inbor+=2) {
-            exchange(inbor, inbor+1);
-            exchange(inbor+1, inbor);
-        }
-        *done_to_parent = true; yield();
-    }
 }

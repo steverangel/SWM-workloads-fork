@@ -1,18 +1,13 @@
 
 #include "hacc_fft.h"
-//#include <asim/restricted/swm_process.h>
+#include "swm-include.h"
 
 HaccFFT::HaccFFT(
-        SWMUserIF* user_if,
-
-        bool* done_from_parent,
 
         HaccConfig & config,
         double buffer_copy_MBps,
         double fft_work_per_second
         ) :
-    SWMUserCode(user_if),
-    done_to_parent(done_from_parent),
     config(config),
     buffer_copy_MBps(buffer_copy_MBps),
     fft_work_per_second(fft_work_per_second)//,
@@ -194,7 +189,7 @@ HaccFFT::distribution(int axis, direction_t dir) {
 
         // Perform the MPI exchange
         // FFT part of comm parttern
-        SWM_Sendrecv(
+        /*SWM_Sendrecv(
                 SWM_COMM_WORLD, //0,  //comm_id
                 send_peer,  //sendpeer
                 0,  //sendtag
@@ -206,8 +201,12 @@ HaccFFT::distribution(int axis, direction_t dir) {
                 recv_peer,  //recvpeer
                 0,  //recvtag
                 NO_BUFFER   //recvbuf
-                );
-
+                );*/
+        uint32_t h = 0;
+        SWM_Irecv(recv_peer, SWM_COMM_WORLD, 0, NO_BUFFER, &h);
+        SWM_Send(send_peer, SWM_COMM_WORLD, 0, config.request_vc, config.response_vc, NO_BUFFER, chunk_size*SIZEOF_ELT);
+        SWM_Wait(h);
+        //std::cout << "rank:" << config.myrank << " send_peer:" << send_peer << "recv_peer:" << recv_peer << std::endl;
 
         // Unpack data from receive buffers
         // See note in comment above

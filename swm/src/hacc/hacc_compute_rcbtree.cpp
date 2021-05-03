@@ -1,19 +1,17 @@
 
 #include "hacc_compute_rcbtree.h"
+#include "swm-include.h"
 
 HaccComputeRCBTree::HaccComputeRCBTree(
 
-        SWMUserIF* user_if,
-
-        bool* done_from_parent,
+//        SWMUserIF* user_if,
 
         HaccConfig & config,
         double nint_mean,
         double nint_delta,
         double nint_per_wall_second
         ) :
-    SWMUserCode(user_if),
-    done_to_parent(done_from_parent),
+//    SWMUserCode(user_if),
     config(config),
     nint_mean(nint_mean),
     nint_delta(nint_delta),
@@ -38,21 +36,11 @@ HaccComputeRCBTree::HaccComputeRCBTree(
 }
 
 void
-HaccComputeRCBTree::call() { //build_tree_and_evaluate_forces() {
-    if (enable_contexts)
-    while(1) {
+HaccComputeRCBTree:://call() { 
+	build_tree_and_evaluate_forces() {
         // TODO:compute: tree build
 
         // Compute interactions
         //backend.compute_seconds(nint/nint_per_wall_second);
-        *done_to_parent = false;
         SWM_Compute(nint/nint_per_wall_second);
-        *done_to_parent = true; yield();
-    }
-    else
-    {
-        *done_to_parent = false;
-        SWM_Compute(nint/nint_per_wall_second);
-        *done_to_parent = true; yield();
-    }
 }

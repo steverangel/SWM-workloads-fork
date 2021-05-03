@@ -1,6 +1,7 @@
 #ifndef _NDINDEX_HPP
 #define _NDINDEX_HPP
 
+#include <iostream>
 #include <assert.h>
 
 template <int N>
@@ -24,7 +25,11 @@ class RowMajorIndexer {
         }
 
         // Safety check
-        assert(index < count);
+        //assert(index < count);
+        if (!(index < count)) {
+          std::cerr << "index:" << index << " -- count:" << count << std::endl;
+          assert(0);
+        }
     }
 
 	void tuple_to_index(const int shape[], const int tuple[], int * index) const
