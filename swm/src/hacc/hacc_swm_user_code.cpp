@@ -68,22 +68,27 @@ HACCSWMUserCode::HACCSWMUserCode(
 
     boost::property_tree::read_json(ss, gen_cfg);
 
-    ng = gen_cfg.get<int>("ng");
-    nranks = gen_cfg.get<int>("nranks"); //8;
-
+    nranks = gen_cfg.get<int>("nranks");
     assert(process_cnt==nranks);  // these should match!
+
+    ng = gen_cfg.get<int>("ng");
+    do_swfft = gen_cfg.get<bool>("do_swfft");
+    box_length = do_swfft ? 0.f : gen_cfg.get<double>("box_length");
 
     assert(sscanf(gen_cfg.get<std::string>("rank_shape_3d").c_str(), "(%d, %d, %d)", &(rank_shape_3d[0]), &(rank_shape_3d[1]), &(rank_shape_3d[2])) == 3);
     assert(sscanf(gen_cfg.get<std::string>("rank_shape_2d_x").c_str(), "(%d, %d, %d)", &(rank_shape_2d_x[0]), &(rank_shape_2d_x[1]), &(rank_shape_2d_x[2])) == 3);
     assert(sscanf(gen_cfg.get<std::string>("rank_shape_2d_y").c_str(), "(%d, %d, %d)", &(rank_shape_2d_y[0]), &(rank_shape_2d_y[1]), &(rank_shape_2d_y[2])) == 3);
     assert(sscanf(gen_cfg.get<std::string>("rank_shape_2d_z").c_str(), "(%d, %d, %d)", &(rank_shape_2d_z[0]), &(rank_shape_2d_z[1]), &(rank_shape_2d_z[2])) == 3);
 
-    box_length = gen_cfg.get<double>("box_length"); 
-
     if (process_id==0) {
+      if (do_swfft)
+        printf("Running SWFFT\n");
+      else
+        printf("Running HACC\n");
       printf("ng: %d\n", ng);
       printf("nranks: %d\n", nranks);
-      printf("box_length: %g\n", box_length);
+      if (!do_swfft)
+        printf("box_length: %g\n", box_length);
 
       for(int i=0; i<3; i++) printf("rank_shape_3d[%d]: %d\n", i, rank_shape_3d[i]);
       for(int i=0; i<3; i++) printf("rank_shape_2d_x[%d]: %d\n", i, rank_shape_2d_x[i]);
@@ -98,17 +103,7 @@ HACCSWMUserCode::HACCSWMUserCode(
 void
 HACCSWMUserCode::call() {
 
-    //SWM_Init(); <<-- symbol undefined 
-    // NOTE: I think you can only start using SWM_*** functions from here in the call stack.
-
-    //SWM_Barrier(
-    //    SWM_COMM_WORLD,
-    //    request_vc,
-    //    response_vc,
-    //    NO_BUFFER,
-    //    AUTO,
-    //    NULL
-    //);
+    //SWM_Init(); // this creates symbol undefined 
 
     // Perf model parameters
     const double ninteractions_per_rank_mean  = 1e10;
@@ -153,14 +148,11 @@ HACCSWMUserCode::call() {
             enable_hacc_checksum
             );
 
-    // ====================================================================
-    // Code below will go to call() method of SWMUserCode subclass
-    // ====================================================================
-    // Go!
 
-    timestep->do_steps();
+    if (do_swfft)
+      timestep->do_swfft();
+    else
+      timestep->do_steps();
 
     SWM_Finalize();
 }
-
-//DLL_POSTAMBLE(HACCSWMUserCode)

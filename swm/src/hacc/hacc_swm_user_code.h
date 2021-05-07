@@ -40,6 +40,7 @@ class HACCSWMUserCode
 
     protected:
 
+        bool do_swfft;
 
         SWM_VC request_vc;
         SWM_VC response_vc;
@@ -52,7 +53,7 @@ class HACCSWMUserCode
         boost::property_tree::ptree gen_cfg;
 
         int ng;
-        int nranks; //8;
+        int nranks;
 
         int rank_shape_3d  [3];
         int rank_shape_2d_x[3];

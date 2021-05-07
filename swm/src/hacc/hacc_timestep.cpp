@@ -100,26 +100,25 @@ HaccTimestep::map2_poisson_backward_gradient() {
     }
 }
 
+void
+HaccTimestep::do_swfft() {
+  fft_forward_solve->forward_solve();
+  fft_backward_solve_gradient->backward_solve_gradient(0);
+}
 
 void
 HaccTimestep::do_steps() {
 
-#if 0
-    //use this just to test nested contexts...
-    for (int istep=0; istep<2; istep++) {
-        SWM_Compute(2);
-        std::cout << "random is " << user_if->RNGIF()->Get(100) << std::endl;
-    }
-#endif
-
     for (int istep=0; istep<nstep; istep++) {
+        if (config.myrank==0)
+          std::cout << "Start of timestep:" << istep << std::endl;
+        
         // Half-kick at first step
         if (istep == 0) {
             map2_poisson_forward();
             map2_poisson_backward_gradient();
         }
 
-/*
         // Sub-stepping
         for (int isubstep=0;isubstep<nsub; isubstep++) {
             sub_cycle();
@@ -127,32 +126,24 @@ HaccTimestep::do_steps() {
 
         // FFT memory reallocation
         if (enable_hacc_fft && do_drop_memory) {
-            // FFT memory reallocation will rebuild the solver, which calls
-            // MPI_Cart_create.  MPI_Cart_create is a collective op which
-            // contains an implicit synchronization and acts as a barrier,
-            // so it's important to emulate its effect
-            //backend.comm_emulate_cart_create();
-            //SWM_Barrier(
-            //        SWM_COMM_WORLD,  //comm_id
-            //        config.request_vc,  //reqvc
-            //        config.response_vc  //rspvc
-            //        );
-            //
-	    SWM_Barrier(
-            SWM_COMM_WORLD,
-            config.request_vc,
-            config.response_vc,
-            NO_BUFFER,
-            AUTO,
-            NULL,
-            AUTOMATIC,
-            AUTOMATIC
-        );
-
+          // FFT memory reallocation will rebuild the solver, which calls
+          // MPI_Cart_create.  MPI_Cart_create is a collective op which
+          // contains an implicit synchronization and acts as a barrier,
+          // so it's important to emulate its effect
+          //backend.comm_emulate_cart_create();
+          SWM_Barrier(
+              SWM_COMM_WORLD,
+              config.request_vc,
+              config.response_vc,
+              NO_BUFFER,
+              AUTO,
+              NULL,
+              AUTOMATIC,
+              AUTOMATIC
+          );
         }
 
         // Checksum particles
-        //backend.comm_allreduce(8); // reduce a single MPI_LONG_LONG
         if (enable_hacc_checksum)
           SWM_Allreduce(
                 8,  //msg_size
@@ -162,13 +153,12 @@ HaccTimestep::do_steps() {
                 config.response_vc,  //rspvc
                 NO_BUFFER,  //sendbuf
                 NO_BUFFER   //recvbuf
-              );
+                );
         
         // Get rho into spectral domain
         map2_poisson_forward();
         
         // Checksum grid density
-        //backend.comm_allreduce(8); // reduce a single MPI_DOUBLE
         if (enable_hacc_checksum)
           SWM_Allreduce(
                 8,                    // msg_size
@@ -202,13 +192,8 @@ HaccTimestep::do_steps() {
                       config.response_vc,  //rspvc
                       NO_BUFFER,  //sendbuf
                       NO_BUFFER   //recvbuf
-                    );
+                      );
           }
-          //SWM_Barrier(
-          //        SWM_COMM_WORLD,  //comm_id
-          //        config.request_vc,  //reqvc
-          //        config.response_vc  //rspvc
-          //        );
           SWM_Barrier(
                 SWM_COMM_WORLD,
                 config.request_vc,
@@ -218,10 +203,7 @@ HaccTimestep::do_steps() {
                 NULL,
                 AUTOMATIC,
                 AUTOMATIC
-            );
-
+                );
         }
-*/
     }
-
 }

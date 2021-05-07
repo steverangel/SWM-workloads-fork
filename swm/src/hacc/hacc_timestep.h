@@ -58,6 +58,8 @@ class HaccTimestep
 
         void do_steps();
 
+        void do_swfft();
+
     private:
     
         // Some timestep-related parameters fixed by the CORAL testcase
